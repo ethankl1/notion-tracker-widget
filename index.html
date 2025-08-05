@@ -177,6 +177,84 @@
 
     // Load view data
     loadThisWeekData();
-  </script>
+  <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import {
+    getDatabase,
+    ref,
+    onValue,
+    get,
+    set,
+    update,
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  const firebaseConfig = {
+  apiKey: "AIzaSyDYUsgGV6mBfoSX7M1fsBbBRd0yq1w-fJw",
+  authDomain: "notion-tracker-widget.firebaseapp.com",
+    databaseURL: "https://notion-tracker-widget-default-rtdb.firebaseio.com",
+    projectId: "notion-tracker-widget",
+  storageBucket: "notion-tracker-widget.firebasestorage.app",
+  messagingSenderId: "646774853915",
+  appId: "1:646774853915:web:1a62f945650a426734c3be"
+};
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  const today = new Date();
+  const currentDay = today.getDay(); // 0 (Sun) - 6 (Sat)
+  const currentDateString = today.toISOString().split("T")[0]; // YYYY-MM-DD
+  const currentWeekKey = getCurrentWeekKey(today);
+  const monthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+
+  function getCurrentWeekKey(date) {
+    const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
+    const dayOfYear = Math.floor((date - firstDayOfYear) / (1000 * 60 * 60 * 24)) + 1;
+    const weekNumber = Math.ceil(dayOfYear / 7);
+    return `${date.getFullYear()}-W${weekNumber}`;
+  }
+
+  async function incrementTodayCount() {
+    const todayRef = ref(db, `views/${currentWeekKey}/${currentDateString}`);
+    const snapshot = await get(todayRef);
+    const currentCount = snapshot.exists() ? snapshot.val() : 0;
+    await set(todayRef, currentCount + 1);
+  }
+
+  async function loadThisWeekData() {
+    const weekRef = ref(db, `views/${currentWeekKey}`);
+    const snapshot = await get(weekRef);
+    const data = snapshot.exists() ? snapshot.val() : {};
+
+    let weeklyTotal = 0;
+
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() - (currentDay - i));
+      const dateStr = date.toISOString().split("T")[0];
+      const count = data[dateStr] || null;
+
+      const dayBox = document.getElementById(`day-${i}`);
+      const countBox = document.getElementById(`count-${i}`);
+
+      dayBox.textContent = daysOfWeek[i];
+      countBox.textContent = count !== null ? count : "";
+      if (count !== null) {
+        weeklyTotal += count;
+      }
+    }
+
+    document.getElementById("weekly-total").textContent = weeklyTotal;
+    // We'll fill in monthly total logic in the next step
+  }
+
+  // Record the view
+  incrementTodayCount().then(() => {
+    loadThisWeekData();
+  });
+</script>
+
 </body>
 </html>
