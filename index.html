@@ -305,33 +305,43 @@ async function loadLastMonthChart() {
   }
 
   new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [{
-        label: 'Views',
-        data: counts,
-        backgroundColor: 'rgba(54, 162, 235, 0.7)',
-        borderColor: 'rgba(54, 162, 235, 1)',
-        borderWidth: 1
-      }]
-    },
-    options: {
-      scales: {
-        x: {
-          ticks: {
-            maxTicksLimit: 15,
-            maxRotation: 0,
-            minRotation: 0
-          }
-        },
-        y: {
-          beginAtZero: true,
-          precision: 0
+  type: 'line',
+  data: {
+    labels: labels,
+    datasets: [{
+      label: 'Views',
+      data: counts,
+      fill: false,
+      borderColor: 'rgba(54, 162, 235, 1)',
+      backgroundColor: 'rgba(54, 162, 235, 0.2)',
+      tension: 0.3,
+      pointRadius: 3,
+      pointHoverRadius: 6
+    }]
+  },
+  options: {
+    responsive: true,
+    scales: {
+      x: {
+        ticks: {
+          maxTicksLimit: 15,
+          maxRotation: 0,
+          minRotation: 0
         }
+      },
+      y: {
+        beginAtZero: true,
+        precision: 0
+      }
+    },
+    plugins: {
+      legend: {
+        display: false
       }
     }
-  });
+  }
+});
+
 }
 
     window.setView = setView;
