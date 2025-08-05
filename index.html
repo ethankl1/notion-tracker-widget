@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <meta charset="UTF-8" />
   <title>Notion Tracker Widget</title>
   <style>
@@ -59,6 +58,7 @@
       min-width: 40px;
     }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
   <div class="widget">
@@ -68,36 +68,7 @@
       <div class="tab" onclick="setView('last-month')">Last Month</div>
     </div>
 
-    <div id="view-area">
-      <table>
-        <thead>
-          <tr>
-            <th id="day-0"></th>
-            <th id="day-1"></th>
-            <th id="day-2"></th>
-            <th id="day-3"></th>
-            <th id="day-4"></th>
-            <th id="day-5"></th>
-            <th id="day-6"></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td id="count-0"></td>
-            <td id="count-1"></td>
-            <td id="count-2"></td>
-            <td id="count-3"></td>
-            <td id="count-4"></td>
-            <td id="count-5"></td>
-            <td id="count-6"></td>
-          </tr>
-        </tbody>
-      </table>
-      <div id="totals">
-        <div><strong>Weekly Total:</strong> <span id="weekly-total">0</span></div>
-        <div><strong>Monthly Total:</strong> <span id="monthly-total">0</span></div>
-      </div>
-    </div>
+    <div id="view-area"></div>
   </div>
 
   <script type="module">
@@ -145,6 +116,18 @@
     }
 
     async function loadThisWeekData() {
+      const viewArea = document.getElementById("view-area");
+      viewArea.innerHTML = `
+        <table>
+          <thead><tr id="week-days-row"></tr></thead>
+          <tbody><tr id="week-counts-row"></tr></tbody>
+        </table>
+        <div id="totals">
+          <div><strong>Weekly Total:</strong> <span id="weekly-total">0</span></div>
+          <div><strong>Monthly Total:</strong> <span id="monthly-total">0</span></div>
+        </div>
+      `;
+
       const weekRef = ref(db, `views/${currentWeekKey}`);
       const snapshot = await get(weekRef);
       const data = snapshot.exists() ? snapshot.val() : {};
@@ -158,8 +141,8 @@
         const dateStr = date.toISOString().split("T")[0];
         const count = data[dateStr] ?? null;
 
-        document.getElementById(`day-${i}`).textContent = daysOfWeek[i];
-        document.getElementById(`count-${i}`).textContent = count !== null ? count : "";
+        document.getElementById("week-days-row").innerHTML += `<th>${daysOfWeek[i]}</th>`;
+        document.getElementById("week-counts-row").innerHTML += `<td>${count !== null ? count : ""}</td>`;
 
         if (count !== null) {
           weeklyTotal += count;
@@ -183,34 +166,24 @@
     }
 
     async function loadLastWeekData() {
+      const viewArea = document.getElementById("view-area");
+      viewArea.innerHTML = `
+        <table>
+          <thead><tr id="week-days-row"></tr></thead>
+          <tbody><tr id="week-counts-row"></tr></tbody>
+        </table>
+        <div id="totals">
+          <div><strong>Weekly Total:</strong> <span id="weekly-total">0</span></div>
+          <div><strong>Monthly Total:</strong> <span id="monthly-total">0</span></div>
+        </div>
+      `;
+
       const today = new Date();
       const startOfThisWeek = new Date(today);
       startOfThisWeek.setDate(today.getDate() - today.getDay());
 
       const startOfLastWeek = new Date(startOfThisWeek);
       startOfLastWeek.setDate(startOfThisWeek.getDate() - 7);
-
-      const daysRow = document.getElementById("week-days-row");
-      const countsRow = document.getElementById("week-counts-row");
-
-      if (!daysRow || !countsRow) {
-        const viewArea = document.getElementById("view-area");
-        viewArea.innerHTML = `
-          <table>
-            <thead><tr id="week-days-row"></tr></thead>
-            <tbody><tr id="week-counts-row"></tr></tbody>
-          </table>
-          <div id="totals">
-            <div><strong>Weekly Total:</strong> <span id="weekly-total">0</span></div>
-            <div><strong>Monthly Total:</strong> <span id="monthly-total">0</span></div>
-          </div>
-        `;
-      }
-
-      const updatedDaysRow = document.getElementById("week-days-row");
-      const updatedCountsRow = document.getElementById("week-counts-row");
-      updatedDaysRow.innerHTML = '';
-      updatedCountsRow.innerHTML = '';
 
       let weeklyTotal = 0;
 
@@ -222,13 +195,78 @@
         const snapshot = await get(ref(db, `views/${getCurrentWeekKey(date)}/${dateStr}`));
         const count = snapshot.exists() ? snapshot.val() : 0;
 
-        updatedDaysRow.innerHTML += `<th>${daysOfWeek[i]}</th>`;
-        updatedCountsRow.innerHTML += `<td>${count}</td>`;
+        document.getElementById("week-days-row").innerHTML += `<th>${daysOfWeek[i]}</th>`;
+        document.getElementById("week-counts-row").innerHTML += `<td>${count}</td>`;
         weeklyTotal += count;
       }
 
       document.getElementById("weekly-total").textContent = weeklyTotal;
-      // monthly total stays as-is for now
+      // monthly total remains unchanged
+    }
+
+    async function loadLastMonthChart() {
+      const viewArea = document.getElementById("view-area");
+      viewArea.innerHTML = `<canvas id="monthChart" height="200"></canvas>`;
+
+      const ctx = document.getElementById("monthChart").getContext("2d");
+
+      const today = new Date();
+      const labels = [];
+      const counts = [];
+
+      const allDataRef = ref(db, 'views');
+      const snapshot = await get(allDataRef);
+      const allData = snapshot.exists() ? snapshot.val() : {};
+
+      for (let i = 29; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(today.getDate() - i);
+        const dateStr = date.toISOString().split("T")[0];
+        const label = `${date.getMonth() + 1}/${date.getDate()}`;
+        labels.push(label);
+
+        const weekKey = getCurrentWeekKey(date);
+        const dayCount = allData[weekKey]?.[dateStr] ?? 0;
+        counts.push(dayCount);
+      }
+
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Views',
+            data: counts,
+            fill: false,
+            borderColor: 'rgba(54, 162, 235, 1)',
+            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+            tension: 0.3,
+            pointRadius: 3,
+            pointHoverRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: {
+              ticks: {
+                maxTicksLimit: 15,
+                maxRotation: 0,
+                minRotation: 0
+              }
+            },
+            y: {
+              beginAtZero: true,
+              precision: 0
+            }
+          },
+          plugins: {
+            legend: {
+              display: false
+            }
+          }
+        }
+      });
     }
 
     function setView(view) {
@@ -237,39 +275,7 @@
       });
       document.querySelector(`.tab[onclick="setView('${view}')"]`).classList.add("active");
 
-      const viewArea = document.getElementById("view-area");
-
       if (view === "this-week") {
-        viewArea.innerHTML = `
-          <table>
-            <thead>
-              <tr>
-                <th id="day-0"></th>
-                <th id="day-1"></th>
-                <th id="day-2"></th>
-                <th id="day-3"></th>
-                <th id="day-4"></th>
-                <th id="day-5"></th>
-                <th id="day-6"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td id="count-0"></td>
-                <td id="count-1"></td>
-                <td id="count-2"></td>
-                <td id="count-3"></td>
-                <td id="count-4"></td>
-                <td id="count-5"></td>
-                <td id="count-6"></td>
-              </tr>
-            </tbody>
-          </table>
-          <div id="totals">
-            <div><strong>Weekly Total:</strong> <span id="weekly-total">0</span></div>
-            <div><strong>Monthly Total:</strong> <span id="monthly-total">0</span></div>
-          </div>
-        `;
         loadThisWeekData();
       } else if (view === "last-week") {
         loadLastWeekData();
@@ -277,72 +283,6 @@
         loadLastMonthChart();
       }
     }
-
-async function loadLastMonthChart() {
-  const viewArea = document.getElementById("view-area");
-  viewArea.innerHTML = `<canvas id="monthChart" width="600" height="300"></canvas>`;
-
-  const ctx = document.getElementById("monthChart").getContext("2d");
-
-  const today = new Date();
-  const dates = [];
-  const labels = [];
-  const counts = [];
-
-  for (let i = 29; i >= 0; i--) {
-    const date = new Date(today);
-    date.setDate(today.getDate() - i);
-    const dateStr = date.toISOString().split("T")[0];
-    dates.push({ dateStr, weekKey: getCurrentWeekKey(date) });
-    labels.push(`${date.getMonth() + 1}/${date.getDate()}`);
-  }
-
-  for (let i = 0; i < dates.length; i++) {
-    const { dateStr, weekKey } = dates[i];
-    const snapshot = await get(ref(db, `views/${weekKey}/${dateStr}`));
-    const count = snapshot.exists() ? snapshot.val() : 0;
-    counts.push(count);
-  }
-
-  new Chart(ctx, {
-  type: 'line',
-  data: {
-    labels: labels,
-    datasets: [{
-      label: 'Views',
-      data: counts,
-      fill: false,
-      borderColor: 'rgba(54, 162, 235, 1)',
-      backgroundColor: 'rgba(54, 162, 235, 0.2)',
-      tension: 0.3,
-      pointRadius: 3,
-      pointHoverRadius: 6
-    }]
-  },
-  options: {
-    responsive: true,
-    scales: {
-      x: {
-        ticks: {
-          maxTicksLimit: 15,
-          maxRotation: 0,
-          minRotation: 0
-        }
-      },
-      y: {
-        beginAtZero: true,
-        precision: 0
-      }
-    },
-    plugins: {
-      legend: {
-        display: false
-      }
-    }
-  }
-});
-
-}
 
     window.setView = setView;
 
