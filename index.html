@@ -184,6 +184,38 @@
     }
 
     // TODO: Add Firebase view tracking logic here
-  </script>
+  <script type="module">
+  // Import Firebase SDK modules
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getDatabase, ref, child, get, set, increment } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+  // Your Firebase config
+  const firebaseConfig = {
+  apiKey: "AIzaSyDYUsgGV6mBfoSX7M1fsBbBRd0yq1w-fJw",
+  authDomain: "notion-tracker-widget.firebaseapp.com",
+  projectId: "notion-tracker-widget",
+  storageBucket: "notion-tracker-widget.firebasestorage.app",
+  messagingSenderId: "646774853915",
+  appId: "1:646774853915:web:1a62f945650a426734c3be"
+};
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  // Get today's date
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+  const day = String(today.getDate()).padStart(2, '0');
+  const dateKey = `${year}-${month}-${day}`;
+
+  // Increment view count for today
+  const viewRef = ref(db, `views/${dateKey}`);
+  set(viewRef, increment(1)).catch(err => {
+    console.error("Error updating view count:", err);
+  });
+</script>
+
 </body>
 </html>
