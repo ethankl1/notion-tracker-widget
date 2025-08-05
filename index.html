@@ -71,12 +71,24 @@
       <table>
         <thead>
           <tr>
-            ${Array.from({ length: 7 }, (_, i) => `<th id="day-${i}"></th>`).join('')}
+            <th id="day-0"></th>
+            <th id="day-1"></th>
+            <th id="day-2"></th>
+            <th id="day-3"></th>
+            <th id="day-4"></th>
+            <th id="day-5"></th>
+            <th id="day-6"></th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            ${Array.from({ length: 7 }, (_, i) => `<td id="count-${i}"></td>`).join('')}
+            <td id="count-0"></td>
+            <td id="count-1"></td>
+            <td id="count-2"></td>
+            <td id="count-3"></td>
+            <td id="count-4"></td>
+            <td id="count-5"></td>
+            <td id="count-6"></td>
           </tr>
         </tbody>
       </table>
@@ -169,67 +181,101 @@
       document.getElementById("monthly-total").textContent = monthlyTotal;
     }
 
-async function loadLastWeekData() {
-  const today = new Date();
-  const startOfThisWeek = new Date(today);
-  startOfThisWeek.setDate(today.getDate() - today.getDay());
+    async function loadLastWeekData() {
+      const today = new Date();
+      const startOfThisWeek = new Date(today);
+      startOfThisWeek.setDate(today.getDate() - today.getDay());
 
-  const startOfLastWeek = new Date(startOfThisWeek);
-  startOfLastWeek.setDate(startOfThisWeek.getDate() - 7);
+      const startOfLastWeek = new Date(startOfThisWeek);
+      startOfLastWeek.setDate(startOfThisWeek.getDate() - 7);
 
-  const daysRow = document.getElementById("week-days-row");
-  const countsRow = document.getElementById("week-counts-row");
-  daysRow.innerHTML = '';
-  countsRow.innerHTML = '';
+      const daysRow = document.getElementById("week-days-row");
+      const countsRow = document.getElementById("week-counts-row");
 
-  let weeklyTotal = 0;
+      if (!daysRow || !countsRow) {
+        const viewArea = document.getElementById("view-area");
+        viewArea.innerHTML = `
+          <table>
+            <thead><tr id="week-days-row"></tr></thead>
+            <tbody><tr id="week-counts-row"></tr></tbody>
+          </table>
+          <div id="totals">
+            <div><strong>Weekly Total:</strong> <span id="weekly-total">0</span></div>
+            <div><strong>Monthly Total:</strong> <span id="monthly-total">0</span></div>
+          </div>
+        `;
+      }
 
-  for (let i = 0; i < 7; i++) {
-    const date = new Date(startOfLastWeek);
-    date.setDate(startOfLastWeek.getDate() + i);
-    const dateStr = date.toISOString().split("T")[0];
+      const updatedDaysRow = document.getElementById("week-days-row");
+      const updatedCountsRow = document.getElementById("week-counts-row");
+      updatedDaysRow.innerHTML = '';
+      updatedCountsRow.innerHTML = '';
 
-    const snapshot = await get(ref(db, `views/${getCurrentWeekKey(date)}/${dateStr}`));
-    const count = snapshot.exists() ? snapshot.val() : 0;
+      let weeklyTotal = 0;
 
-    daysRow.innerHTML += `<th>${daysOfWeek[i]}</th>`;
-    countsRow.innerHTML += `<td>${count}</td>`;
-    weeklyTotal += count;
-  }
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(startOfLastWeek);
+        date.setDate(startOfLastWeek.getDate() + i);
+        const dateStr = date.toISOString().split("T")[0];
 
-  document.getElementById("weekly-total").textContent = weeklyTotal;
-  // monthly total stays as-is for now
-}
+        const snapshot = await get(ref(db, `views/${getCurrentWeekKey(date)}/${dateStr}`));
+        const count = snapshot.exists() ? snapshot.val() : 0;
+
+        updatedDaysRow.innerHTML += `<th>${daysOfWeek[i]}</th>`;
+        updatedCountsRow.innerHTML += `<td>${count}</td>`;
+        weeklyTotal += count;
+      }
+
+      document.getElementById("weekly-total").textContent = weeklyTotal;
+      // monthly total stays as-is for now
+    }
 
     function setView(view) {
-  document.querySelectorAll(".tab").forEach(tab => {
-    tab.classList.remove("active");
-  });
-  document.querySelector(`.tab[onclick="setView('${view}')"]`).classList.add("active");
+      document.querySelectorAll(".tab").forEach(tab => {
+        tab.classList.remove("active");
+      });
+      document.querySelector(`.tab[onclick="setView('${view}')"]`).classList.add("active");
 
-  const viewArea = document.getElementById("view-area");
+      const viewArea = document.getElementById("view-area");
 
-  // Re-render base HTML
-  viewArea.innerHTML = `
-    <table>
-      <thead><tr id="week-days-row"></tr></thead>
-      <tbody><tr id="week-counts-row"></tr></tbody>
-    </table>
-    <div id="totals">
-      <div><strong>Weekly Total:</strong> <span id="weekly-total">0</span></div>
-      <div><strong>Monthly Total:</strong> <span id="monthly-total">0</span></div>
-    </div>
-  `;
-
-  if (view === "this-week") {
-    loadThisWeekData();
-  } else if (view === "last-week") {
-    loadLastWeekData();
-  } else {
-    viewArea.innerHTML = `<p>Chart coming soon...</p>`;
-  }
-}
-
+      if (view === "this-week") {
+        viewArea.innerHTML = `
+          <table>
+            <thead>
+              <tr>
+                <th id="day-0"></th>
+                <th id="day-1"></th>
+                <th id="day-2"></th>
+                <th id="day-3"></th>
+                <th id="day-4"></th>
+                <th id="day-5"></th>
+                <th id="day-6"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td id="count-0"></td>
+                <td id="count-1"></td>
+                <td id="count-2"></td>
+                <td id="count-3"></td>
+                <td id="count-4"></td>
+                <td id="count-5"></td>
+                <td id="count-6"></td>
+              </tr>
+            </tbody>
+          </table>
+          <div id="totals">
+            <div><strong>Weekly Total:</strong> <span id="weekly-total">0</span></div>
+            <div><strong>Monthly Total:</strong> <span id="monthly-total">0</span></div>
+          </div>
+        `;
+        loadThisWeekData();
+      } else if (view === "last-week") {
+        loadLastWeekData();
+      } else {
+        viewArea.innerHTML = `<p>Chart coming soon...</p>`;
+      }
+    }
 
     window.setView = setView;
 
