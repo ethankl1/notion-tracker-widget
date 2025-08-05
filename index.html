@@ -153,6 +153,22 @@
         }
       }
 
+      const allDataRef = ref(db, 'views');
+      const allDataSnapshot = await get(allDataRef);
+      const allData = allDataSnapshot.exists() ? allDataSnapshot.val() : {};
+
+      for (const week in allData) {
+        for (const day in allData[week]) {
+          if (day.startsWith(monthKey)) {
+            monthlyTotal += allData[week][day];
+          }
+        }
+      }
+
+      document.getElementById("weekly-total").textContent = weeklyTotal;
+      document.getElementById("monthly-total").textContent = monthlyTotal;
+    }
+
 async function loadLastWeekData() {
   const today = new Date();
   const startOfThisWeek = new Date(today);
@@ -184,23 +200,6 @@ async function loadLastWeekData() {
   document.getElementById("weekly-total").textContent = weeklyTotal;
   // monthly total stays as-is for now
 }
-
-
-      const allDataRef = ref(db, 'views');
-      const allDataSnapshot = await get(allDataRef);
-      const allData = allDataSnapshot.exists() ? allDataSnapshot.val() : {};
-
-      for (const week in allData) {
-        for (const day in allData[week]) {
-          if (day.startsWith(monthKey)) {
-            monthlyTotal += allData[week][day];
-          }
-        }
-      }
-
-      document.getElementById("weekly-total").textContent = weeklyTotal;
-      document.getElementById("monthly-total").textContent = monthlyTotal;
-    }
 
     function setView(view) {
   document.querySelectorAll(".tab").forEach(tab => {
