@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Notion Tracker Widget</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: white;
+      font-family: 'Inter', sans-serif;
+      color: #222;
+      display: flex;
+      justify-content: center;
+      align-items: start;
+      padding-top: 20px;
+    }
+
+    .widget {
+      width: 95%;
+      max-width: 700px;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 0 8px rgba(0,0,0,0.05);
+    }
+
+    .tabs {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .tab {
+      padding: 8px 12px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .tab.active {
+      background: black;
+      color: white;
+      font-weight: bold;
+    }
+
+    .table {
+      display: grid;
+      grid-template-columns: repeat(9, 1fr);
+      gap: 6px;
+    }
+
+    .cell {
+      background: #f5f5f5;
+      padding: 10px;
+      text-align: center;
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .chart {
+      height: 200px;
+      border: 1px dashed #ccc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #888;
+      border-radius: 8px;
+    }
+
+    .total-line {
+      margin-top: 12px;
+      font-size: 0.9rem;
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+  <div class="widget">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('week')">This Week</div>
+      <div class="tab" onclick="switchTab('last-week')">Last Week</div>
+      <div class="tab" onclick="switchTab('last-month')">Last Month</div>
+    </div>
+
+    <!-- This Week View -->
+    <div id="week-view">
+      <div class="table">
+        <div class="cell"><strong>Sun</strong></div>
+        <div class="cell"><strong>Mon</strong></div>
+        <div class="cell"><strong>Tue</strong></div>
+        <div class="cell"><strong>Wed</strong></div>
+        <div class="cell"><strong>Thu</strong></div>
+        <div class="cell"><strong>Fri</strong></div>
+        <div class="cell"><strong>Sat</strong></div>
+        <div class="cell"><strong>Total</strong></div>
+        <div class="cell"><strong>Month</strong></div>
+
+        <!-- Row 2: dynamic values -->
+        <div class="cell" id="sun-count">—</div>
+        <div class="cell" id="mon-count">—</div>
+        <div class="cell" id="tue-count">—</div>
+        <div class="cell" id="wed-count">—</div>
+        <div class="cell" id="thu-count">—</div>
+        <div class="cell" id="fri-count">—</div>
+        <div class="cell" id="sat-count">—</div>
+        <div class="cell" id="week-total">—</div>
+        <div class="cell" id="month-total">—</div>
+      </div>
+    </div>
+
+    <!-- Last Week View -->
+    <div id="last-week-view" class="hidden">
+      <div class="table">
+        <div class="cell"><strong>Sun</strong></div>
+        <div class="cell"><strong>Mon</strong></div>
+        <div class="cell"><strong>Tue</strong></div>
+        <div class="cell"><strong>Wed</strong></div>
+        <div class="cell"><strong>Thu</strong></div>
+        <div class="cell"><strong>Fri</strong></div>
+        <div class="cell"><strong>Sat</strong></div>
+        <div class="cell"><strong>Total</strong></div>
+
+        <div class="cell" id="last-sun">—</div>
+        <div class="cell" id="last-mon">—</div>
+        <div class="cell" id="last-tue">—</div>
+        <div class="cell" id="last-wed">—</div>
+        <div class="cell" id="last-thu">—</div>
+        <div class="cell" id="last-fri">—</div>
+        <div class="cell" id="last-sat">—</div>
+        <div class="cell" id="last-week-total">—</div>
+      </div>
+    </div>
+
+    <!-- Last Month View -->
+    <div id="last-month-view" class="hidden">
+      <div class="chart">
+        [Chart Placeholder – Coming Soon]
+      </div>
+      <div class="total-line">
+        Last Month Total: <span id="last-month-total">—</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase and Script -->
+  <script type="module">
+    // Replace with your Firebase config
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getDatabase, ref, get, set, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDYUsgGV6mBfoSX7M1fsBbBRd0yq1w-fJw",
+  authDomain: "notion-tracker-widget.firebaseapp.com",
+  projectId: "notion-tracker-widget",
+  storageBucket: "notion-tracker-widget.firebasestorage.app",
+  messagingSenderId: "646774853915",
+  appId: "1:646774853915:web:1a62f945650a426734c3be"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // UI tab toggle logic
+    function switchTab(tab) {
+      document.querySelectorAll(".tab").forEach(el => el.classList.remove("active"));
+      document.querySelectorAll("#week-view, #last-week-view, #last-month-view").forEach(el => el.classList.add("hidden"));
+
+      if (tab === "week") {
+        document.getElementById("week-view").classList.remove("hidden");
+      } else if (tab === "last-week") {
+        document.getElementById("last-week-view").classList.remove("hidden");
+      } else if (tab === "last-month") {
+        document.getElementById("last-month-view").classList.remove("hidden");
+      }
+
+      document.querySelector(`.tab:nth-child(${tab === "week" ? 1 : tab === "last-week" ? 2 : 3})`).classList.add("active");
+    }
+
+    // TODO: Add Firebase view tracking logic here
+  </script>
+</body>
+</html>
