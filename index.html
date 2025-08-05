@@ -153,6 +153,39 @@
         }
       }
 
+async function loadLastWeekData() {
+  const today = new Date();
+  const startOfThisWeek = new Date(today);
+  startOfThisWeek.setDate(today.getDate() - today.getDay());
+
+  const startOfLastWeek = new Date(startOfThisWeek);
+  startOfLastWeek.setDate(startOfThisWeek.getDate() - 7);
+
+  const daysRow = document.getElementById("week-days-row");
+  const countsRow = document.getElementById("week-counts-row");
+  daysRow.innerHTML = '';
+  countsRow.innerHTML = '';
+
+  let weeklyTotal = 0;
+
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(startOfLastWeek);
+    date.setDate(startOfLastWeek.getDate() + i);
+    const dateStr = date.toISOString().split("T")[0];
+
+    const snapshot = await get(ref(db, `views/${getCurrentWeekKey(date)}/${dateStr}`));
+    const count = snapshot.exists() ? snapshot.val() : 0;
+
+    daysRow.innerHTML += `<th>${daysOfWeek[i]}</th>`;
+    countsRow.innerHTML += `<td>${count}</td>`;
+    weeklyTotal += count;
+  }
+
+  document.getElementById("weekly-total").textContent = weeklyTotal;
+  // monthly total stays as-is for now
+}
+
+
       const allDataRef = ref(db, 'views');
       const allDataSnapshot = await get(allDataRef);
       const allData = allDataSnapshot.exists() ? allDataSnapshot.val() : {};
@@ -170,37 +203,34 @@
     }
 
     function setView(view) {
-      document.querySelectorAll(".tab").forEach(tab => {
-        tab.classList.remove("active");
-      });
-      document.querySelector(`.tab[onclick="setView('${view}')"]`).classList.add("active");
+  document.querySelectorAll(".tab").forEach(tab => {
+    tab.classList.remove("active");
+  });
+  document.querySelector(`.tab[onclick="setView('${view}')"]`).classList.add("active");
 
-      const viewArea = document.getElementById("view-area");
+  const viewArea = document.getElementById("view-area");
 
-      if (view === "this-week") {
-        viewArea.innerHTML = `
-          <table>
-            <thead>
-              <tr>
-                ${daysOfWeek.map((_, i) => `<th id="day-${i}"></th>`).join("")}
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                ${daysOfWeek.map((_, i) => `<td id="count-${i}"></td>`).join("")}
-              </tr>
-            </tbody>
-          </table>
-          <div id="totals">
-            <div><strong>Weekly Total:</strong> <span id="weekly-total">0</span></div>
-            <div><strong>Monthly Total:</strong> <span id="monthly-total">0</span></div>
-          </div>
-        `;
-        loadThisWeekData();
-      } else {
-        viewArea.innerHTML = `<p>Coming soon...</p>`;
-      }
-    }
+  // Re-render base HTML
+  viewArea.innerHTML = `
+    <table>
+      <thead><tr id="week-days-row"></tr></thead>
+      <tbody><tr id="week-counts-row"></tr></tbody>
+    </table>
+    <div id="totals">
+      <div><strong>Weekly Total:</strong> <span id="weekly-total">0</span></div>
+      <div><strong>Monthly Total:</strong> <span id="monthly-total">0</span></div>
+    </div>
+  `;
+
+  if (view === "this-week") {
+    loadThisWeekData();
+  } else if (view === "last-week") {
+    loadLastWeekData();
+  } else {
+    viewArea.innerHTML = `<p>Chart coming soon...</p>`;
+  }
+}
+
 
     window.setView = setView;
 
