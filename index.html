@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <meta charset="UTF-8" />
   <title>Notion Tracker Widget</title>
   <style>
@@ -272,10 +273,66 @@
         loadThisWeekData();
       } else if (view === "last-week") {
         loadLastWeekData();
-      } else {
-        viewArea.innerHTML = `<p>Chart coming soon...</p>`;
+      } else if (view === "last-month") {
+        loadLastMonthChart();
       }
     }
+
+async function loadLastMonthChart() {
+  const viewArea = document.getElementById("view-area");
+  viewArea.innerHTML = `<canvas id="monthChart" width="600" height="300"></canvas>`;
+
+  const ctx = document.getElementById("monthChart").getContext("2d");
+
+  const today = new Date();
+  const dates = [];
+  const labels = [];
+  const counts = [];
+
+  for (let i = 29; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(today.getDate() - i);
+    const dateStr = date.toISOString().split("T")[0];
+    dates.push({ dateStr, weekKey: getCurrentWeekKey(date) });
+    labels.push(`${date.getMonth() + 1}/${date.getDate()}`);
+  }
+
+  for (let i = 0; i < dates.length; i++) {
+    const { dateStr, weekKey } = dates[i];
+    const snapshot = await get(ref(db, `views/${weekKey}/${dateStr}`));
+    const count = snapshot.exists() ? snapshot.val() : 0;
+    counts.push(count);
+  }
+
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Views',
+        data: counts,
+        backgroundColor: 'rgba(54, 162, 235, 0.7)',
+        borderColor: 'rgba(54, 162, 235, 1)',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      scales: {
+        x: {
+          ticks: {
+            maxTicksLimit: 15,
+            maxRotation: 0,
+            minRotation: 0
+          }
+        },
+        y: {
+          beginAtZero: true,
+          precision: 0
+        }
+      }
+    }
+  });
+}
 
     window.setView = setView;
 
