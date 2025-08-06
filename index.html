@@ -113,12 +113,22 @@
     const currentWeekKey = getCurrentWeekKey(today);
     const monthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
 
-    function getCurrentWeekKey(date) {
-      const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
-      const dayOfYear = Math.floor((date - firstDayOfYear) / (1000 * 60 * 60 * 24)) + 1;
-      const weekNumber = Math.ceil(dayOfYear / 7);
-      return `${date.getFullYear()}-W${weekNumber}`;
-    }
+    function getCurrentWeekKey(date = new Date()) {
+  // Copy date so we don't modify the original
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  
+  // Set to nearest Thursday (ISO 8601 week starts on Monday)
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+
+  // Get first day of year
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+
+  // Calculate week number
+  const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+
+  return `${d.getUTCFullYear()}-W${weekNo.toString().padStart(2, "0")}`;
+}
+
 
     async function incrementTodayCount() {
       const todayRef = ref(db, `views/${currentWeekKey}/${currentDateString}`);
