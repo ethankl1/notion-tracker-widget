@@ -147,49 +147,47 @@ Chart.register(
     }
 
     async function loadThisWeekData() {
-      const weekRef = ref(db, `views/${currentWeekKey}`);
-      const snapshot = await get(weekRef);
-      const data = snapshot.exists() ? snapshot.val() : {};
+  const startOfWeek = new Date(today);
+  startOfWeek.setDate(today.getDate() - today.getDay()); // Always Sunday
 
-      let weeklyTotal = 0;
-      let monthlyTotal = 0;
+  const weekRef = ref(db, `views`);
+  const snapshot = await get(weekRef);
+  const allData = snapshot.exists() ? snapshot.val() : {};
 
-      let daysRow = "";
-      let countsRow = "";
+  let weeklyTotal = 0;
+  let monthlyTotal = 0;
 
-      for (let i = 0; i < 7; i++) {
-        const date = new Date(today);
-        date.setDate(today.getDate() - (currentDay - i));
-        const dateStr = date.toISOString().split("T")[0];
-        const count = data[dateStr] ?? "";
+  const daysRow = document.getElementById("week-days-row");
+  const countsRow = document.getElementById("week-counts-row");
+  daysRow.innerHTML = '';
+  countsRow.innerHTML = '';
 
-        daysRow += `<th>${daysOfWeek[i]}</th>`;
-        countsRow += `<td>${count}</td>`;
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(startOfWeek);
+    date.setDate(startOfWeek.getDate() + i);
+    const dateStr = date.toISOString().split("T")[0];
+    const label = `${daysOfWeek[date.getDay()]}`; // Sun, Mon, etc.
 
-        if (count !== "") weeklyTotal += count;
-      }
+    // Find week key
+    const weekKey = getCurrentWeekKey(date);
+    const count = (allData?.[weekKey]?.[dateStr]) ?? "";
 
-      const allDataSnapshot = await get(ref(db, 'views'));
-      const allData = allDataSnapshot.exists() ? allDataSnapshot.val() : {};
-      for (const week in allData) {
-        for (const day in allData[week]) {
-          if (day.startsWith(currentMonthKey)) {
-            monthlyTotal += allData[week][day];
-          }
-        }
-      }
+    daysRow.innerHTML += `<th>${label}</th>`;
+    countsRow.innerHTML += `<td>${count}</td>`;
 
-      document.getElementById("view-area").innerHTML = `
-        <table>
-          <thead><tr>${daysRow}</tr></thead>
-          <tbody><tr>${countsRow}</tr></tbody>
-        </table>
-        <div id="totals">
-          <div><strong>Weekly Total:</strong> ${weeklyTotal}</div>
-          <div><strong>Monthly Total:</strong> ${monthlyTotal}</div>
-        </div>
-      `;
+    if (typeof count === "number") {
+      weeklyTotal += count;
     }
+
+    if (dateStr.startsWith(monthKey)) {
+      monthlyTotal += typeof count === "number" ? count : 0;
+    }
+  }
+
+  document.getElementById("weekly-total").textContent = weeklyTotal;
+  document.getElementById("monthly-total").textContent = monthlyTotal;
+}
+
 
     async function loadThisMonthGraph() {
       const viewArea = document.getElementById("view-area");
