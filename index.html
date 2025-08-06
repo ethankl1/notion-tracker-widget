@@ -20,8 +20,7 @@
       border: 2px solid #ccc;
       border-radius: 12px;
       padding: 20px;
-      width: 100%;
-      max-width: 500px;
+      width: fit-content;
       background: #fff;
     }
 
@@ -60,8 +59,7 @@
     }
 
     canvas {
-      max-width: 100%;
-      height: 200px !important;
+      max-height: 150px;
     }
   </style>
 </head>
@@ -74,7 +72,14 @@
     </div>
 
     <div id="view-area">
-      <!-- Dynamic content inserted by JS -->
+      <table>
+        <thead><tr id="week-days-row"></tr></thead>
+        <tbody><tr id="week-counts-row"></tr></tbody>
+      </table>
+      <div id="totals">
+        <div><strong>Weekly Total:</strong> <span id="weekly-total">0</span></div>
+        <div><strong>Monthly Total:</strong> <span id="monthly-total">0</span></div>
+      </div>
     </div>
   </div>
 
@@ -86,30 +91,6 @@
       get,
       set
     } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-    
-import {
-  Chart,
-  LineController,
-  LineElement,
-  PointElement,
-  LinearScale,
-  CategoryScale,
-  Title,
-  Tooltip,
-  Legend
-} from "https://cdn.skypack.dev/chart.js";
-
-Chart.register(
-  LineController,
-  LineElement,
-  PointElement,
-  LinearScale,
-  CategoryScale,
-  Title,
-  Tooltip,
-  Legend
-);
-
 
     const firebaseConfig = {
       apiKey: "AIzaSyDYUsgGV6mBfoSX7M1fsBbBRd0yq1w-fJw",
@@ -130,7 +111,7 @@ Chart.register(
     const currentDateString = today.toISOString().split("T")[0];
 
     const currentWeekKey = getCurrentWeekKey(today);
-    const currentMonthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+    const monthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
 
     function getCurrentWeekKey(date) {
       const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
@@ -147,162 +128,73 @@ Chart.register(
     }
 
     async function loadThisWeekData() {
-  const startOfWeek = new Date(today);
-  startOfWeek.setDate(today.getDate() - today.getDay()); // Always Sunday
+      const weekRef = ref(db, `views/${currentWeekKey}`);
+      const snapshot = await get(weekRef);
+      const data = snapshot.exists() ? snapshot.val() : {};
 
-  const weekRef = ref(db, `views`);
-  const snapshot = await get(weekRef);
-  const allData = snapshot.exists() ? snapshot.val() : {};
+      let weeklyTotal = 0;
+      let monthlyTotal = 0;
 
-  let weeklyTotal = 0;
-  let monthlyTotal = 0;
+      const daysRow = document.getElementById("week-days-row");
+      const countsRow = document.getElementById("week-counts-row");
+      daysRow.innerHTML = '';
+      countsRow.innerHTML = '';
 
-  const daysRow = document.getElementById("week-days-row");
-  const countsRow = document.getElementById("week-counts-row");
-  daysRow.innerHTML = '';
-  countsRow.innerHTML = '';
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() - currentDay + i);
+        const dateStr = date.toISOString().split("T")[0];
+        const count = data[dateStr] ?? "";
 
-  for (let i = 0; i < 7; i++) {
-    const date = new Date(startOfWeek);
-    date.setDate(startOfWeek.getDate() + i);
-    const dateStr = date.toISOString().split("T")[0];
-    const label = `${daysOfWeek[date.getDay()]}`; // Sun, Mon, etc.
+        daysRow.innerHTML += `<th>${daysOfWeek[i]}</th>`;
+        countsRow.innerHTML += `<td>${count}</td>`;
 
-    // Find week key
-    const weekKey = getCurrentWeekKey(date);
-    const count = (allData?.[weekKey]?.[dateStr]) ?? "";
+        if (count !== "") {
+          weeklyTotal += count;
+        }
+      }
 
-    daysRow.innerHTML += `<th>${label}</th>`;
-    countsRow.innerHTML += `<td>${count}</td>`;
+      const allDataRef = ref(db, 'views');
+      const allDataSnapshot = await get(allDataRef);
+      const allData = allDataSnapshot.exists() ? allDataSnapshot.val() : {};
 
-    if (typeof count === "number") {
-      weeklyTotal += count;
-    }
-
-    if (dateStr.startsWith(monthKey)) {
-      monthlyTotal += typeof count === "number" ? count : 0;
-    }
-  }
-
-  document.getElementById("weekly-total").textContent = weeklyTotal;
-  document.getElementById("monthly-total").textContent = monthlyTotal;
-}
-
-
-    async function loadThisMonthGraph() {
-      const viewArea = document.getElementById("view-area");
-      viewArea.innerHTML = `<canvas id="month-chart"></canvas>`;
-
-      const currentMonth = today.getMonth();
-      const currentYear = today.getFullYear();
-      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-
-      const labels = Array.from({ length: daysInMonth }, (_, i) => `${currentMonth + 1}/${String(i + 1).padStart(2, '0')}`);
-      const dataPoints = Array(daysInMonth).fill(null);
-
-      const snapshot = await get(ref(db, 'views'));
-      if (snapshot.exists()) {
-        const allData = snapshot.val();
-        for (const week in allData) {
-          for (const day in allData[week]) {
-            const date = new Date(day);
-            if (date.getMonth() === currentMonth && date.getFullYear() === currentYear) {
-              const index = date.getDate() - 1;
-              dataPoints[index] = allData[week][day];
-            }
+      for (const week in allData) {
+        for (const day in allData[week]) {
+          if (day.startsWith(monthKey)) {
+            monthlyTotal += allData[week][day];
           }
         }
       }
 
-      new Chart(document.getElementById("month-chart"), {
-        type: "line",
-        data: {
-          labels,
-          datasets: [{
-            label: "Views",
-            data: dataPoints,
-            borderColor: "#222",
-            backgroundColor: "rgba(34,34,34,0.1)",
-            spanGaps: false,
-          }]
-        },
-        options: {
-          scales: {
-            y: { beginAtZero: true },
-            x: { ticks: { maxRotation: 0 } }
-          },
-          responsive: true,
-          maintainAspectRatio: false
-        }
-      });
-    }
-
-    async function loadLast4MonthsGraph() {
-      const viewArea = document.getElementById("view-area");
-      viewArea.innerHTML = `<canvas id="four-month-chart"></canvas>`;
-
-      const now = new Date();
-      const currentMonth = now.getMonth();
-      const currentYear = now.getFullYear();
-
-      const targetMonths = [];
-      for (let i = 1; i <= 4; i++) {
-        const date = new Date(currentYear, currentMonth - i, 1);
-        targetMonths.push(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`);
-      }
-
-      const snapshot = await get(ref(db, 'views'));
-      const weekMap = new Map();
-
-      if (snapshot.exists()) {
-        const allData = snapshot.val();
-        for (const week in allData) {
-          for (const day in allData[week]) {
-            const date = new Date(day);
-            const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-            if (targetMonths.includes(key)) {
-              if (!weekMap.has(week)) weekMap.set(week, 0);
-              weekMap.set(week, weekMap.get(week) + allData[week][day]);
-            }
-          }
-        }
-      }
-
-      const sortedWeeks = Array.from(weekMap.entries()).sort(([a], [b]) => a.localeCompare(b));
-      const labels = sortedWeeks.map(([week]) => week.replace(/^\d{4}-W/, "W"));
-      const dataPoints = sortedWeeks.map(([, val]) => val);
-
-      new Chart(document.getElementById("four-month-chart"), {
-        type: "line",
-        data: {
-          labels,
-          datasets: [{
-            label: "Weekly Views",
-            data: dataPoints,
-            borderColor: "#444",
-            backgroundColor: "rgba(68,68,68,0.1)",
-            spanGaps: false,
-          }]
-        },
-        options: {
-          scales: {
-            y: { beginAtZero: true }
-          },
-          responsive: true,
-          maintainAspectRatio: false
-        }
-      });
+      document.getElementById("weekly-total").textContent = weeklyTotal;
+      document.getElementById("monthly-total").textContent = monthlyTotal;
     }
 
     function setView(view) {
-      document.querySelectorAll(".tab").forEach(tab => tab.classList.remove("active"));
+      document.querySelectorAll(".tab").forEach(tab => {
+        tab.classList.remove("active");
+      });
       document.querySelector(`.tab[onclick="setView('${view}')"]`).classList.add("active");
 
+      const viewArea = document.getElementById("view-area");
+
       if (view === "this-week") {
+        viewArea.innerHTML = `
+          <table>
+            <thead><tr id="week-days-row"></tr></thead>
+            <tbody><tr id="week-counts-row"></tr></tbody>
+          </table>
+          <div id="totals">
+            <div><strong>Weekly Total:</strong> <span id="weekly-total">0</span></div>
+            <div><strong>Monthly Total:</strong> <span id="monthly-total">0</span></div>
+          </div>
+        `;
         loadThisWeekData();
       } else if (view === "this-month") {
+        viewArea.innerHTML = `<canvas id="monthChart"></canvas>`;
         loadThisMonthGraph();
       } else if (view === "last-4-months") {
+        viewArea.innerHTML = `<canvas id="last4Chart"></canvas>`;
         loadLast4MonthsGraph();
       }
     }
